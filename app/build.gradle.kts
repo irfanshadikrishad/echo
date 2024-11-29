@@ -7,9 +7,14 @@ android {
     namespace = "io.irfanshadikrishad.echo"
     compileSdk = 34
 
+    buildFeatures {
+        viewBinding = true
+    }
+
     defaultConfig {
         applicationId = "io.irfanshadikrishad.echo"
         minSdk = 26
+        //noinspection OldTargetApi
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
