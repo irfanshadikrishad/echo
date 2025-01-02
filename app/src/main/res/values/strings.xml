@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Echo</string>
+    <string name="your_name">Your name</string>
+    <string name="your_email">Your email</string>
+    <string name="your_phone">Your phone</string>
+    <string name="your_password">Password</string>
+    <string name="confirm_password">Confirm password</string>
+    <string name="register">Sign Up</string>
+    <string name="login">Login</string>
+    <string name="no_account_register">Don\'t have an account? Register</string>
+    <string name="already_have_an_account_login">Already have an account? Login</string>
+    <string name="don_t_have_an_account_register">Don\'t have an account? Register</string>
+    <string name="welcome_to_the_dashboard">Welcome to the Dashboard!</string>
+    <string name="phone">Phone:</string>
+    <string name="email">Email:</string>
+    <string name="name">Name:</string>
+</resources>
