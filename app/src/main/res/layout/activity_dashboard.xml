@@ -28,4 +28,11 @@
         android:text="@string/phone"
         android:textSize="18sp" />
 
+    <Button
+        android:id="@+id/logout_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:text="@string/logout" />
 </LinearLayout>

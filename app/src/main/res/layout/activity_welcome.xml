@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DashboardActivity">
+
+    <!-- Welcome Image -->
+    <ImageView
+        android:id="@+id/image_welcome"
+        android:layout_width="match_parent"
+        android:layout_height="600dp"
+        android:layout_marginStart="30dp"
+        android:layout_marginEnd="30dp"
+        android:contentDescription="@string/welcome_to_the_dashboard"
+        android:src="@drawable/welcome"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Welcome Message -->
+    <LinearLayout
+        android:id="@+id/welcome_message_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:layout_marginTop="16dp"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toStartOf="@+id/forward_icon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/image_welcome">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/welcome"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/please_login_to_continue"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Forward Icon -->
+    <ImageView
+        android:id="@+id/forward_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="30dp"
+        android:contentDescription="@string/forward_icon"
+        android:src="@drawable/forward_right"
+        app:layout_constraintBottom_toBottomOf="@+id/welcome_message_container"
+        app:layout_constraintEnd_toEndOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>

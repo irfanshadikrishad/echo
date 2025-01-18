@@ -14,4 +14,8 @@
     <string name="phone">Phone:</string>
     <string name="email">Email:</string>
     <string name="name">Name:</string>
+    <string name="welcome">Welcome</string>
+    <string name="please_login_to_continue">Please login to continue</string>
+    <string name="forward_icon" />
+    <string name="logout">Logout</string>
 </resources>

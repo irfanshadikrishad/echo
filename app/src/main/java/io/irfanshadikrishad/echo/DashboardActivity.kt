@@ -1,7 +1,10 @@
 package io.irfanshadikrishad.echo
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -23,6 +26,9 @@ class DashboardActivity : AppCompatActivity() {
         val nameTextView = findViewById<TextView>(R.id.user_name)
         val emailTextView = findViewById<TextView>(R.id.user_email)
         val phoneTextView = findViewById<TextView>(R.id.user_phone)
+
+        // Logout Button
+        val logoutButton = findViewById<Button>(R.id.logout_button)
 
         // Get user details passed from LoginActivity
         val name = intent.getStringExtra("name")
@@ -47,6 +53,18 @@ class DashboardActivity : AppCompatActivity() {
             // Fetch from Firestore if data not passed
             fetchUserDetails(nameTextView, emailTextView, phoneTextView)
         }
+
+        // Logout functionality
+        logoutButton.setOnClickListener {
+            firebaseAuth.signOut() // Sign out from Firebase
+            Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show()
+            // Navigate back to LoginActivity
+            val intent = Intent(this, LoginActivity::class.java)
+            intent.flags =
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // Clear back stack
+            startActivity(intent)
+            finish()
+        }
     }
 
     // Fetch user details from Firestore
@@ -66,13 +84,25 @@ class DashboardActivity : AppCompatActivity() {
                         val phone = document.getString("phone")
 
                         // Update TextViews
-                        nameTextView.text = "Name: $name"
-                        emailTextView.text = "Email: $email"
-                        phoneTextView.text = "Phone: $phone"
+                        nameTextView.text = buildString {
+                            append("Name: ")
+                            append(name)
+                        }
+                        emailTextView.text = buildString {
+                            append("Email: ")
+                            append(email)
+                        }
+                        phoneTextView.text = buildString {
+                            append("Phone: ")
+                            append(phone)
+                        }
                     }
                 }
                 .addOnFailureListener { e ->
-                    nameTextView.text = "Failed to fetch user details: ${e.message}"
+                    nameTextView.text = buildString {
+                        append("Failed to fetch user details: ")
+                        append(e.message)
+                    }
                 }
         }
     }

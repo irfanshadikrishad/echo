@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "io.irfanshadikrishad.echo"
-        minSdk = 26
+        minSdk = 29
         //noinspection OldTargetApi
         targetSdk = 34
         versionCode = 1
