@@ -24,4 +24,9 @@
     <string name="notifications">Notifications</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="write_a_post">Write a post...</string>
+    <string name="post">Post</string>
+    <string name="authenticated_users_avatar">Authenticated users avatar</string>
+    <string name="update">Update</string>
+    <string name="n_a">N/A</string>
 </resources>

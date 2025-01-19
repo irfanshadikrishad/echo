@@ -1,59 +1,106 @@
 package io.irfanshadikrishad.echo
 
+import android.content.Intent
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.squareup.picasso.Picasso
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [Profile.newInstance] factory method to
- * create an instance of this fragment.
- */
 class Profile : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
+    private lateinit var firebaseAuth: FirebaseAuth
+    private lateinit var firestore: FirebaseFirestore
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
+    private lateinit var profileAvatar: ImageView
+    private lateinit var profileName: TextView
+    private lateinit var profileEmail: TextView
+    private lateinit var updateButton: Button
+    private lateinit var logoutButton: Button
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_profile, container, false)
+        val view = inflater.inflate(R.layout.fragment_profile, container, false)
+
+        // Initialize FirebaseAuth and Firestore
+        firebaseAuth = FirebaseAuth.getInstance()
+        firestore = FirebaseFirestore.getInstance()
+
+        // Initialize UI components
+        profileAvatar = view.findViewById(R.id.profile_avatar)
+        profileName = view.findViewById(R.id.profile_name)
+        profileEmail = view.findViewById(R.id.profile_email)
+        updateButton = view.findViewById(R.id.profile_update)
+        logoutButton = view.findViewById(R.id.profile_logout)
+
+        // Fetch and display user details
+        fetchUserDetails()
+
+        // Handle logout button
+        logoutButton.setOnClickListener {
+            firebaseAuth.signOut()
+            Toast.makeText(requireContext(), "Logged out successfully", Toast.LENGTH_SHORT).show()
+            // Redirect to LoginActivity
+            val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+                flags =
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // Clear the back stack
+            }
+            startActivity(intent)
+        }
+
+        // Handle update button
+        updateButton.setOnClickListener {
+            Toast.makeText(
+                requireContext(), "Update functionality not implemented", Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        return view
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment Profile.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            Profile().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    private fun fetchUserDetails() {
+        val currentUser = firebaseAuth.currentUser
+        if (currentUser != null) {
+            firestore.collection("users").document(currentUser.uid).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        // Get user details
+                        val name = document.getString("name")
+                        val email = document.getString("email")
+                        val avatarUrl =
+                            document.getString("avatarUrl") // Assuming you store an avatar URL
+
+                        // Update UI
+                        profileName.text = name ?: "N/A"
+                        profileEmail.text = email ?: "N/A"
+
+                        // Load avatar using Picasso or Glide
+                        if (!avatarUrl.isNullOrEmpty()) {
+                            Picasso.get().load(avatarUrl).into(profileAvatar)
+                        } else {
+                            profileAvatar.setImageResource(R.drawable.default_avatar) // Default avatar
+                        }
+                    } else {
+                        Toast.makeText(
+                            requireContext(), "User details not found", Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }.addOnFailureListener { exception ->
+                    Toast.makeText(
+                        requireContext(),
+                        "Failed to fetch user details: ${exception.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-            }
+        } else {
+            Toast.makeText(requireContext(), "No authenticated user", Toast.LENGTH_SHORT).show()
+        }
     }
 }
