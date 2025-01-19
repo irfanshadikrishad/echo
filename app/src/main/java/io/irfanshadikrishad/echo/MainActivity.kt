@@ -14,7 +14,6 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : AppCompatActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -54,75 +53,54 @@ class MainActivity : AppCompatActivity() {
 
     // Firebase registration function
     private fun registerUserWithFirebase(
-        name: String,
-        email: String,
-        phone: String,
-        password: String
+        name: String, email: String, phone: String, password: String
     ) {
         val firebaseAuth = FirebaseAuth.getInstance()
         val firestore = FirebaseFirestore.getInstance()
 
-        firebaseAuth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    // Get the current user
-                    val user = firebaseAuth.currentUser
+        firebaseAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                // Get the current user
+                val user = firebaseAuth.currentUser
 
-                    // Update profile with display name
-                    val profileUpdates = UserProfileChangeRequest.Builder()
-                        .setDisplayName(name)
-                        .build()
+                // Update profile with display name
+                val profileUpdates = UserProfileChangeRequest.Builder().setDisplayName(name).build()
 
-                    user?.updateProfile(profileUpdates)?.addOnCompleteListener {
-                        if (it.isSuccessful) {
-                            // Save additional details to Firestore
-                            val userDetails = hashMapOf(
-                                "uid" to user.uid,
-                                "name" to name,
-                                "email" to email,
-                                "phone" to phone
-                            )
+                user?.updateProfile(profileUpdates)?.addOnCompleteListener {
+                    if (it.isSuccessful) {
+                        // Save additional details to Firestore
+                        val userDetails = hashMapOf(
+                            "uid" to user.uid, "name" to name, "email" to email, "phone" to phone
+                        )
 
-                            firestore.collection("users").document(user.uid)
-                                .set(userDetails)
-                                .addOnSuccessListener {
-                                    Toast.makeText(
-                                        this,
-                                        "Registration Successful!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                        firestore.collection("users").document(user.uid).set(userDetails)
+                            .addOnSuccessListener {
+                                Toast.makeText(
+                                    this, "Registration Successful!", Toast.LENGTH_SHORT
+                                ).show()
 
-                                    // Navigate to login page
-                                    val intent = Intent(this, LoginActivity::class.java)
-                                    startActivity(intent)
-                                }
-                                .addOnFailureListener { e ->
-                                    Toast.makeText(
-                                        this,
-                                        "Failed to save details: ${e.message}",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                        }
+                                // Navigate to login page
+                                val intent = Intent(this, LoginActivity::class.java)
+                                startActivity(intent)
+                            }.addOnFailureListener { e ->
+                                Toast.makeText(
+                                    this, "Failed to save details: ${e.message}", Toast.LENGTH_LONG
+                                ).show()
+                            }
                     }
-                } else {
-                    // Registration failed
-                    Toast.makeText(
-                        this,
-                        "Registration Failed: ${task.exception?.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
                 }
+            } else {
+                // Registration failed
+                Toast.makeText(
+                    this, "Registration Failed: ${task.exception?.message}", Toast.LENGTH_LONG
+                ).show()
             }
+        }
     }
 
     // Validation function
     private fun validateInput(
-        name: String,
-        email: String,
-        phone: String,
-        password: String,
-        confirmPassword: String
+        name: String, email: String, phone: String, password: String, confirmPassword: String
     ): Boolean {
         if (name.isEmpty()) {
             showError(R.id.textInputLayout_name, "Name is required")

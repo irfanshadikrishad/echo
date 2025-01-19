@@ -3,6 +3,7 @@ package io.irfanshadikrishad.echo
 import android.content.Intent
 import android.os.Bundle
 import android.util.Patterns
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
@@ -40,62 +41,61 @@ class LoginActivity : AppCompatActivity() {
                 loginUser(email, password)
             }
         }
+
+        //Redirect to register
+        val register = findViewById<TextView>(R.id.redirect_register)
+        register.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     // Login user with Firebase
     private fun loginUser(email: String, password: String) {
-        firebaseAuth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    // Login successful
-                    val user = firebaseAuth.currentUser
-                    if (user != null) {
-                        // Fetch user details from Firestore
-                        fetchUserDetails(user.uid)
-                    }
-                } else {
-                    // Login failed
-                    Toast.makeText(
-                        this,
-                        "Login Failed: ${task.exception?.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
+        firebaseAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                // Login successful
+                val user = firebaseAuth.currentUser
+                if (user != null) {
+                    // Fetch user details from Firestore
+                    fetchUserDetails(user.uid)
                 }
+            } else {
+                // Login failed
+                Toast.makeText(
+                    this, "Login Failed: ${task.exception?.message}", Toast.LENGTH_LONG
+                ).show()
             }
+        }
     }
 
     // Fetch user details from Firestore
     private fun fetchUserDetails(uid: String) {
-        firestore.collection("users").document(uid).get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    // Extract user details
-                    val name = document.getString("name")
-                    val email = document.getString("email")
-                    val phone = document.getString("phone")
+        firestore.collection("users").document(uid).get().addOnSuccessListener { document ->
+            if (document != null && document.exists()) {
+                // Extract user details
+                val name = document.getString("name")
+                val email = document.getString("email")
+                val phone = document.getString("phone")
 
-                    // Show a success message
-                    Toast.makeText(this, "Welcome, $name!", Toast.LENGTH_SHORT).show()
+                // Show a success message
+                Toast.makeText(this, "Welcome, $name!", Toast.LENGTH_SHORT).show()
 
-                    // Navigate to the dashboard activity
-                    val intent = Intent(this, DashboardActivity::class.java).apply {
-                        putExtra("name", name)
-                        putExtra("email", email)
-                        putExtra("phone", phone)
-                    }
-                    startActivity(intent)
-                } else {
-                    Toast.makeText(this, "User details not found!", Toast.LENGTH_SHORT).show()
+                // Navigate to the dashboard activity
+                val intent = Intent(this, DashboardActivity::class.java).apply {
+                    putExtra("name", name)
+                    putExtra("email", email)
+                    putExtra("phone", phone)
                 }
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "User details not found!", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(
-                    this,
-                    "Failed to fetch user details: ${e.message}",
-                    Toast.LENGTH_LONG
-                )
-                    .show()
-            }
+        }.addOnFailureListener { e ->
+            Toast.makeText(
+                this, "Failed to fetch user details: ${e.message}", Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     // Validation function
