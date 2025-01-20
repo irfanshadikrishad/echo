@@ -18,9 +18,11 @@ import com.cloudinary.android.callback.UploadCallback
 import com.cloudinary.utils.ObjectUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.squareup.picasso.MemoryPolicy
-import com.squareup.picasso.NetworkPolicy
+import com.jakewharton.picasso.OkHttp3Downloader
 import com.squareup.picasso.Picasso
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import java.util.concurrent.TimeUnit
 
 class Profile : Fragment() {
     private lateinit var firebaseAuth: FirebaseAuth
@@ -34,6 +36,7 @@ class Profile : Fragment() {
 
     private lateinit var selectedAvatarUri: Uri
     private lateinit var pickImageLauncher: ActivityResultLauncher<String>
+    private lateinit var picassoInstance: Picasso
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -51,14 +54,12 @@ class Profile : Fragment() {
         editButton = view.findViewById(R.id.profile_edit)
         logoutButton = view.findViewById(R.id.profile_logout)
 
+        // Initialize OkHttpClient and configure Picasso
+        initializePicasso()
+
         // Initialize MediaManager if not already initialized
         if (!isMediaManagerInitialized()) {
-            val config = mapOf(
-                "cloud_name" to "dgczy8tct",
-                "api_key" to "149311275935645",
-                "api_secret" to "A2SBNOvZd68nTh3082AV5PRXX7g"
-            )
-            MediaManager.init(requireContext(), config)
+            initializeCloudinary()
         }
 
         // Register the ActivityResultLauncher for picking an image
@@ -91,6 +92,19 @@ class Profile : Fragment() {
         return view
     }
 
+    private fun initializePicasso() {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
+        val okHttpClient =
+            OkHttpClient.Builder().addInterceptor(logging).connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS).build()
+
+        picassoInstance =
+            Picasso.Builder(requireContext()).downloader(OkHttp3Downloader(okHttpClient)).build()
+    }
+
     private fun fetchUserDetails() {
         val currentUser = firebaseAuth.currentUser
         if (currentUser != null) {
@@ -108,36 +122,18 @@ class Profile : Fragment() {
                         profileEmail.text = email ?: "N/A"
 
                         if (!avatarUrl.isNullOrEmpty()) {
-                            Picasso.get()
-                                .load(avatarUrl)
-                                .networkPolicy(NetworkPolicy.NO_CACHE)
-                                .memoryPolicy(MemoryPolicy.NO_CACHE)
-                                .placeholder(R.drawable.default_avatar)
-                                .error(R.drawable.default_avatar)
-                                .into(profileAvatar, object : com.squareup.picasso.Callback {
-                                    override fun onSuccess() {
-                                        Log.d("Profile", "Avatar loaded successfully")
-                                    }
-
-                                    override fun onError(e: Exception?) {
-                                        Log.e("Profile", "Error loading avatar: ${e?.message}")
-                                    }
-                                })
+                            Picasso.get().load(avatarUrl).into(profileAvatar)
                         } else {
                             profileAvatar.setImageResource(R.drawable.default_avatar)
                         }
                     } else {
                         if (isAdded) {
                             Toast.makeText(
-                                requireContext(),
-                                "User details not found",
-                                Toast.LENGTH_SHORT
-                            )
-                                .show()
+                                requireContext(), "User details not found", Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
-                }
-                .addOnFailureListener { exception ->
+                }.addOnFailureListener { exception ->
                     if (isAdded) {
                         Toast.makeText(
                             requireContext(),
@@ -150,6 +146,24 @@ class Profile : Fragment() {
             if (isAdded) {
                 Toast.makeText(requireContext(), "No authenticated user", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun initializeCloudinary() {
+        val config = mapOf(
+            "cloud_name" to "dgczy8tct",
+            "api_key" to "149311275935645",
+            "api_secret" to "A2SBNOvZd68nTh3082AV5PRXX7g"
+        )
+        MediaManager.init(requireContext(), config)
+    }
+
+    private fun isMediaManagerInitialized(): Boolean {
+        return try {
+            MediaManager.get()
+            true
+        } catch (e: IllegalStateException) {
+            false
         }
     }
 
@@ -167,10 +181,9 @@ class Profile : Fragment() {
                 .setCancelable(true).create()
 
         changeAvatarButton.setOnClickListener {
-            // Launch the image picker
             pickImageLauncher.launch("image/*")
             if (::selectedAvatarUri.isInitialized) {
-                Picasso.get().load(selectedAvatarUri).into(editAvatar)
+                picassoInstance.load(selectedAvatarUri).into(editAvatar)
             }
         }
 
@@ -184,7 +197,6 @@ class Profile : Fragment() {
                 return@setOnClickListener
             }
 
-            // Upload new avatar to Cloudinary if there's a new one
             if (::selectedAvatarUri.isInitialized) {
                 uploadAvatarToCloudinary(selectedAvatarUri, name, email)
             } else {
@@ -221,16 +233,6 @@ class Profile : Fragment() {
             override fun onReschedule(requestId: String?, error: ErrorInfo?) {}
         }).dispatch()
     }
-
-    private fun isMediaManagerInitialized(): Boolean {
-        return try {
-            MediaManager.get()
-            true
-        } catch (e: IllegalStateException) {
-            false
-        }
-    }
-
 
     private fun updateUserProfile(name: String, email: String, avatarUrl: String?) {
         val currentUser = firebaseAuth.currentUser

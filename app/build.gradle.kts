@@ -62,5 +62,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.logging.interceptor)
     implementation(libs.picasso2.okhttp3.downloader)
+    implementation(libs.glide)
+    annotationProcessor(libs.compiler)
 
 }
