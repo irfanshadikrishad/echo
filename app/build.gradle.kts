@@ -50,10 +50,19 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.androidx.media3.exoplayer)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
+    implementation(libs.picasso)
+    implementation(libs.cloudinary.android)
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
+    implementation(libs.picasso2.okhttp3.downloader)
+    implementation(libs.glide)
+    annotationProcessor(libs.compiler)
+
 }
