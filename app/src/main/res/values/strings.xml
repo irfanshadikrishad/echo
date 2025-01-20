@@ -29,4 +29,7 @@
     <string name="authenticated_users_avatar">Authenticated users avatar</string>
     <string name="update">Update</string>
     <string name="n_a">N/A</string>
+    <string name="edit">Edit</string>
+    <string name="change_avatar">Change Avatar</string>
+    <string name="save_changes">Save Changes</string>
 </resources>

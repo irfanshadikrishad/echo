@@ -49,11 +49,11 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/profile_update"
+            android:id="@+id/profile_edit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="5dp"
-            android:text="@string/update"
+            android:text="@string/edit"
             tools:ignore="ButtonStyle" />
 
         <Button
