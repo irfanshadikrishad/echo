@@ -4,23 +4,21 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.squareup.picasso.Picasso
 import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.ErrorInfo
 import com.cloudinary.android.callback.UploadCallback
 import com.cloudinary.utils.ObjectUtils
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.squareup.picasso.Picasso
 
 class Profile : Fragment() {
     private lateinit var firebaseAuth: FirebaseAuth
@@ -33,6 +31,7 @@ class Profile : Fragment() {
     private lateinit var logoutButton: Button
 
     private lateinit var selectedAvatarUri: Uri
+    private lateinit var pickImageLauncher: ActivityResultLauncher<String>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -49,6 +48,22 @@ class Profile : Fragment() {
         profileEmail = view.findViewById(R.id.profile_email)
         editButton = view.findViewById(R.id.profile_edit)
         logoutButton = view.findViewById(R.id.profile_logout)
+
+        // Initialize MediaManager if not already initialized
+        val config = mapOf(
+            "cloud_name" to "dgczy8tct",
+            "api_key" to "149311275935645",
+            "api_secret" to "A2SBNOvZd68nTh3082AV5PRXX7g"
+        )
+        MediaManager.init(requireContext(), config)
+
+        // Register the ActivityResultLauncher for picking an image
+        pickImageLauncher =
+            registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+                if (uri != null) {
+                    selectedAvatarUri = uri
+                }
+            }
 
         // Fetch and display user details
         fetchUserDetails()
@@ -121,18 +136,11 @@ class Profile : Fragment() {
                 .setCancelable(true).create()
 
         changeAvatarButton.setOnClickListener {
-            // Launch an image picker using ActivityResultContracts.GetContent
-            val pickImageLauncher =
-                registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-                    if (uri != null) {
-                        selectedAvatarUri = uri
-                        // Load the selected image into the ImageView
-                        Picasso.get().load(selectedAvatarUri).into(editAvatar)
-                    }
-                }
-
-            // Open the image picker for images only
+            // Launch the image picker
             pickImageLauncher.launch("image/*")
+            if (::selectedAvatarUri.isInitialized) {
+                Picasso.get().load(selectedAvatarUri).into(editAvatar)
+            }
         }
 
         saveButton.setOnClickListener {
@@ -159,33 +167,39 @@ class Profile : Fragment() {
     }
 
     private fun uploadAvatarToCloudinary(uri: Uri, name: String, email: String) {
-        val uploadRequest = MediaManager.get().upload(uri).options(
+        MediaManager.get().upload(uri).options(
             ObjectUtils.asMap(
                 "folder", "user_avatars", "public_id", firebaseAuth.currentUser?.uid
             )
-        )
+        ).callback(object : UploadCallback {
+            override fun onStart(requestId: String?) {}
+            override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
+            override fun onSuccess(requestId: String?, resultData: MutableMap<Any?, Any?>?) {
+                val avatarUrl = resultData?.get("url") as? String
+                updateUserProfile(name, email, avatarUrl)
+            }
 
-        uploadRequest.callback(
-            object : UploadCallback {
-                override fun onStart(requestId: String?) {}
-                override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
-                override fun onSuccess(requestId: String?, resultData: MutableMap<Any?, Any?>?) {
-                    val avatarUrl = resultData?.get("url") as String
-                    updateUserProfile(name, email, avatarUrl)
-                }
+            override fun onError(requestId: String?, error: ErrorInfo?) {
+                Toast.makeText(
+                    requireContext(),
+                    "Avatar upload failed: ${error?.description}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
 
-                override fun onError(requestId: String?, error: ErrorInfo?) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Avatar upload failed: $error",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                }
-
-                override fun onReschedule(requestId: String?, error: ErrorInfo?) {}
-            },
-        ).dispatch()
+            override fun onReschedule(requestId: String?, error: ErrorInfo?) {}
+        }).dispatch()
     }
+
+    private fun isMediaManagerInitialized(): Boolean {
+        return try {
+            MediaManager.get()
+            true
+        } catch (e: IllegalStateException) {
+            false
+        }
+    }
+
 
     private fun updateUserProfile(name: String, email: String, avatarUrl: String?) {
         val currentUser = firebaseAuth.currentUser
