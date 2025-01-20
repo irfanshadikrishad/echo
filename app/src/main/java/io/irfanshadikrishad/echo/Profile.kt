@@ -18,6 +18,8 @@ import com.cloudinary.android.callback.UploadCallback
 import com.cloudinary.utils.ObjectUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.squareup.picasso.MemoryPolicy
+import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
 
 class Profile : Fragment() {
@@ -50,12 +52,14 @@ class Profile : Fragment() {
         logoutButton = view.findViewById(R.id.profile_logout)
 
         // Initialize MediaManager if not already initialized
-        val config = mapOf(
-            "cloud_name" to "dgczy8tct",
-            "api_key" to "149311275935645",
-            "api_secret" to "A2SBNOvZd68nTh3082AV5PRXX7g"
-        )
-        MediaManager.init(requireContext(), config)
+        if (!isMediaManagerInitialized()) {
+            val config = mapOf(
+                "cloud_name" to "dgczy8tct",
+                "api_key" to "149311275935645",
+                "api_secret" to "A2SBNOvZd68nTh3082AV5PRXX7g"
+            )
+            MediaManager.init(requireContext(), config)
+        }
 
         // Register the ActivityResultLauncher for picking an image
         pickImageLauncher =
@@ -92,33 +96,60 @@ class Profile : Fragment() {
         if (currentUser != null) {
             firestore.collection("users").document(currentUser.uid).get()
                 .addOnSuccessListener { document ->
+                    if (!isAdded) return@addOnSuccessListener // Ensure fragment is attached
                     if (document != null && document.exists()) {
                         val name = document.getString("name")
                         val email = document.getString("email")
                         val avatarUrl = document.getString("avatarUrl")
 
+                        Log.d("Profile", "Fetched user details: $name $email $avatarUrl")
+
                         profileName.text = name ?: "N/A"
                         profileEmail.text = email ?: "N/A"
 
                         if (!avatarUrl.isNullOrEmpty()) {
-                            Picasso.get().load(avatarUrl).into(profileAvatar)
+                            Picasso.get()
+                                .load(avatarUrl)
+                                .networkPolicy(NetworkPolicy.NO_CACHE)
+                                .memoryPolicy(MemoryPolicy.NO_CACHE)
+                                .placeholder(R.drawable.default_avatar)
+                                .error(R.drawable.default_avatar)
+                                .into(profileAvatar, object : com.squareup.picasso.Callback {
+                                    override fun onSuccess() {
+                                        Log.d("Profile", "Avatar loaded successfully")
+                                    }
+
+                                    override fun onError(e: Exception?) {
+                                        Log.e("Profile", "Error loading avatar: ${e?.message}")
+                                    }
+                                })
                         } else {
                             profileAvatar.setImageResource(R.drawable.default_avatar)
                         }
                     } else {
+                        if (isAdded) {
+                            Toast.makeText(
+                                requireContext(),
+                                "User details not found",
+                                Toast.LENGTH_SHORT
+                            )
+                                .show()
+                        }
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    if (isAdded) {
                         Toast.makeText(
-                            requireContext(), "User details not found", Toast.LENGTH_SHORT
+                            requireContext(),
+                            "Failed to fetch user details: ${exception.message}",
+                            Toast.LENGTH_SHORT
                         ).show()
                     }
-                }.addOnFailureListener { exception ->
-                    Toast.makeText(
-                        requireContext(),
-                        "Failed to fetch user details: ${exception.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
         } else {
-            Toast.makeText(requireContext(), "No authenticated user", Toast.LENGTH_SHORT).show()
+            if (isAdded) {
+                Toast.makeText(requireContext(), "No authenticated user", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
