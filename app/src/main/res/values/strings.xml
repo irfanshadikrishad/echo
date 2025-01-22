@@ -32,4 +32,5 @@
     <string name="edit">Edit</string>
     <string name="change_avatar">Change Avatar</string>
     <string name="save_changes">Save Changes</string>
+    <string name="_0_likes">0 Likes</string>
 </resources>

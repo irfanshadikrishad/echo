@@ -7,17 +7,20 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class PostAdapter(
-    private val posts: List<Post>,
-    private val db: FirebaseFirestore
+    private val posts: List<Post>, private val db: FirebaseFirestore
 ) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
 
     class PostViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val avatarImageView: ImageView = view.findViewById(R.id.avatarImageView)
         val nameTextView: TextView = view.findViewById(R.id.nameTextView)
         val contentTextView: TextView = view.findViewById(R.id.contentTextView)
+        val likeCountTextView: TextView = view.findViewById(R.id.likeCountTextView)
+        val likeButton: ImageView = view.findViewById(R.id.likeButton)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
@@ -32,33 +35,48 @@ class PostAdapter(
         holder.contentTextView.text = post.content
 
         // Fetch user details from Firestore
-        db.collection("users").document(post.userId).get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val userName = document.getString("name") ?: "Unknown User"
-                    val userAvatarUrl = document.getString("avatarUrl") ?: ""
+        db.collection("users").document(post.userId).get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                val userName = document.getString("name") ?: "Unknown User"
+                val userAvatarUrl = document.getString("avatarUrl") ?: ""
 
-                    // Set user name
-                    holder.nameTextView.text = userName
+                // Set user name and avatar
+                holder.nameTextView.text = userName
+                Glide.with(holder.avatarImageView.context).load(userAvatarUrl)
+                    .placeholder(R.drawable.default_avatar).into(holder.avatarImageView)
+            }
+        }
 
-                    // Load user avatar using Glide
-                    Glide.with(holder.avatarImageView.context)
-                        .load(userAvatarUrl)
-                        .placeholder(R.drawable.default_avatar)
-                        .into(holder.avatarImageView)
+        // Update likes count
+        holder.likeCountTextView.text = buildString {
+            append(post.likes.size)
+            append(" Likes")
+        }
+
+        // Check if the current user has liked the post
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+        val isLiked = post.likes.contains(currentUserId)
+        holder.likeButton.setImageResource(if (isLiked) R.drawable.love_selected else R.drawable.love_unselected)
+
+        // Handle like button clicks
+        holder.likeButton.setOnClickListener {
+            currentUserId?.let { userId ->
+                val postRef = db.collection("posts").document(post.id)
+
+                if (isLiked) {
+                    // Remove like
+                    postRef.update("likes", FieldValue.arrayRemove(userId))
+                    post.likes -= userId
                 } else {
-                    holder.nameTextView.text = buildString {
-                        append("Unknown User")
-                    }
-                    holder.avatarImageView.setImageResource(R.drawable.default_avatar)
+                    // Add like
+                    postRef.update("likes", FieldValue.arrayUnion(userId))
+                    post.likes += userId
                 }
+
+                // Update UI
+                notifyItemChanged(position)
             }
-            .addOnFailureListener {
-                holder.nameTextView.text = buildString {
-                    append("Unknown User")
-                }
-                holder.avatarImageView.setImageResource(R.drawable.default_avatar)
-            }
+        }
     }
 
     override fun getItemCount(): Int = posts.size

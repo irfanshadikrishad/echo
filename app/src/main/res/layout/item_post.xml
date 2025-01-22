@@ -1,5 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="5dp"
@@ -38,4 +39,28 @@
         android:layout_marginTop="5dp"
         android:text="@string/n_a"
         android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:gravity="center"
+        tools:ignore="UseCompoundDrawables">
+
+        <ImageView
+            android:id="@+id/likeButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/love_unselected"
+            app:tint="@color/purple" />
+
+        <TextView
+            android:id="@+id/likeCountTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/_0_likes"
+            android:textSize="14sp" />
+    </LinearLayout>
 </LinearLayout>

@@ -94,23 +94,12 @@ class Home : Fragment() {
         db.collection("posts")
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING).get()
             .addOnSuccessListener { documents ->
-                val oldSize = posts.size // Track current size
-                posts.clear() // Clear the current list
-
+                posts.clear()
                 for (document in documents) {
                     val post = document.toObject(Post::class.java)
                     posts.add(post)
                 }
-
-                val newSize = posts.size // Track the new size
-                if (newSize > oldSize) {
-                    // Notify only the newly added items
-                    postAdapter.notifyItemRangeInserted(oldSize, newSize - oldSize)
-                } else {
-                    postAdapter.notifyDataSetChanged() // Fallback for full refresh
-                }
-            }.addOnFailureListener {
-                Toast.makeText(context, "Failed to load posts", Toast.LENGTH_SHORT).show()
+                postAdapter.notifyDataSetChanged()
             }
     }
 
