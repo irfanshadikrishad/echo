@@ -31,7 +31,7 @@ class Home : Fragment() {
         // Initialize RecyclerView
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
-            postAdapter = PostAdapter(posts)
+            postAdapter = PostAdapter(posts, db)
             adapter = postAdapter
         }
 
