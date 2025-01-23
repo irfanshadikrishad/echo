@@ -27,6 +27,7 @@
         <activity android:name=".LoginActivity" />
         <activity android:name=".MainActivity" />
         <activity android:name=".DashboardActivity" />
+        <activity android:name=".PostDetailActivity" />
     </application>
 
 </manifest>

@@ -1,5 +1,6 @@
 package io.irfanshadikrishad.echo
 
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -77,6 +78,14 @@ class PostAdapter(
                 notifyItemChanged(position)
             }
         }
+
+        holder.itemView.setOnClickListener {
+            val context = holder.itemView.context
+            val intent = Intent(context, PostDetailActivity::class.java)
+            intent.putExtra("postId", post.id)
+            context.startActivity(intent)
+        }
+
     }
 
     override fun getItemCount(): Int = posts.size
