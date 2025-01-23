@@ -1,6 +1,7 @@
 package io.irfanshadikrishad.echo
 
 import android.content.Intent
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,6 +22,7 @@ class PostAdapter(
         val nameTextView: TextView = view.findViewById(R.id.nameTextView)
         val contentTextView: TextView = view.findViewById(R.id.contentTextView)
         val likeCountTextView: TextView = view.findViewById(R.id.likeCountTextView)
+        val commentCountTextView: TextView = view.findViewById(R.id.commentCountTextView)
         val likeButton: ImageView = view.findViewById(R.id.likeButton)
     }
 
@@ -47,6 +49,17 @@ class PostAdapter(
                     .placeholder(R.drawable.default_avatar).into(holder.avatarImageView)
             }
         }
+        // Comment count
+        db.collection("posts").document(post.id).collection("comments").get()
+            .addOnSuccessListener { querySnapshot ->
+                val commentCount = querySnapshot.size()
+                holder.commentCountTextView.text = buildString {
+                    append(commentCount)
+                    append(" Comments")
+                }
+            }.addOnFailureListener { e ->
+                Log.e("PostDetailActivity", "Failed to fetch comment count: ${e.message}")
+            }
 
         // Update likes count
         holder.likeCountTextView.text = buildString {
@@ -85,7 +98,6 @@ class PostAdapter(
             intent.putExtra("postId", post.id)
             context.startActivity(intent)
         }
-
     }
 
     override fun getItemCount(): Int = posts.size
