@@ -107,7 +107,6 @@ class PostDetailActivity : AppCompatActivity() {
             Toast.makeText(this, "Invalid Post ID", Toast.LENGTH_SHORT).show()
             return
         }
-
         db.collection("posts").document(postId!!).collection("comments")
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
@@ -122,9 +121,11 @@ class PostDetailActivity : AppCompatActivity() {
 
                 if (snapshot != null) {
                     comments.clear() // Clear the existing comments list
-                    for (document in snapshot) {
+                    for (document in snapshot.documents) {
                         val comment = document.toObject(Comment::class.java)
-                        comments.add(comment)
+                        if (comment != null) {
+                            comments.add(comment)
+                        }
                     }
                     commentsAdapter.notifyDataSetChanged() // Notify adapter of the data change
                 }
@@ -148,8 +149,6 @@ class PostDetailActivity : AppCompatActivity() {
         db.collection("posts").document(postId!!).collection("comments").document(comment.id)
             .set(comment).addOnSuccessListener {
                 Toast.makeText(this, "Comment added", Toast.LENGTH_SHORT).show()
-                comments.add(comment)
-                commentsAdapter.notifyItemInserted(comments.size - 1)
                 binding.commentEditText.text?.clear()
             }.addOnFailureListener {
                 Toast.makeText(this, "Failed to add comment", Toast.LENGTH_SHORT).show()
