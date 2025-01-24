@@ -32,4 +32,11 @@
     <string name="edit">Edit</string>
     <string name="change_avatar">Change Avatar</string>
     <string name="save_changes">Save Changes</string>
+    <string name="_0_likes">0 Likes</string>
+    <string name="timestamp">Timestamp</string>
+    <string name="comment_content">Comment content</string>
+    <string name="write_a_comment">Write a comment</string>
+    <string name="post_comment">Post Comment</string>
+    <string name="post_content">Post Content</string>
+    <string name="_0_comments">0 Comments</string>
 </resources>
