@@ -2,6 +2,8 @@ package io.irfanshadikrishad.echo
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -22,7 +24,9 @@ import com.jakewharton.picasso.OkHttp3Downloader
 import com.squareup.picasso.Picasso
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 class Profile : Fragment() {
     private lateinit var firebaseAuth: FirebaseAuth
@@ -37,6 +41,7 @@ class Profile : Fragment() {
     private lateinit var selectedAvatarUri: Uri
     private lateinit var pickImageLauncher: ActivityResultLauncher<String>
     private lateinit var picassoInstance: Picasso
+    private var currentDialogEditAvatar: ImageView? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -66,7 +71,10 @@ class Profile : Fragment() {
         pickImageLauncher =
             registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
                 if (uri != null) {
+                    val scaledBitmap = getScaledBitmap(uri)
                     selectedAvatarUri = uri
+                    // Handle updating the ImageView in the dialog dynamically
+                    updateDialogAvatar(scaledBitmap)
                 }
             }
 
@@ -176,40 +184,73 @@ class Profile : Fragment() {
         val changeAvatarButton = dialogView.findViewById<Button>(R.id.changeAvatarButton)
         val saveButton = dialogView.findViewById<Button>(R.id.saveButton)
 
+        currentDialogEditAvatar = editAvatar // Track the current ImageView for updates
+
         val dialog =
-            AlertDialog.Builder(requireContext()).setView(dialogView).setTitle("Edit profile:")
+            AlertDialog.Builder(requireContext()).setView(dialogView).setTitle("Edit profile")
                 .setCancelable(true).create()
 
-        changeAvatarButton.setOnClickListener {
-            pickImageLauncher.launch("image/*")
-            if (::selectedAvatarUri.isInitialized) {
-                picassoInstance.load(selectedAvatarUri).into(editAvatar)
+        // Pre-fill user data
+        val currentUser = firebaseAuth.currentUser
+        currentUser?.let {
+            firestore.collection("users").document(it.uid).get().addOnSuccessListener { document ->
+                if (document.exists()) {
+                    editName.setText(document.getString("name") ?: "")
+                    editEmail.setText(document.getString("email") ?: "")
+                    val avatarUrl = document.getString("avatarUrl")
+                    if (!avatarUrl.isNullOrEmpty()) {
+                        Picasso.get().load(avatarUrl).into(editAvatar)
+                    }
+                }
             }
         }
 
-        saveButton.setOnClickListener {
-            val name = editName.text.toString()
-            val email = editEmail.text.toString()
+        // Change avatar logic
+        changeAvatarButton.setOnClickListener {
+            try {
+                pickImageLauncher.launch("image/*")
+            } catch (err: Exception) {
+                Toast.makeText(
+                    requireContext(), "Error: ${err.localizedMessage}", Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
-            if (name.isEmpty() || email.isEmpty()) {
-                Toast.makeText(requireContext(), "Please fill in all fields", Toast.LENGTH_SHORT)
-                    .show()
+        // Save button logic
+        saveButton.setOnClickListener {
+            val name = editName.text.toString().trim()
+            val email = editEmail.text.toString().trim()
+
+            if (name.isEmpty() && email.isEmpty() && !::selectedAvatarUri.isInitialized) {
+                Toast.makeText(
+                    requireContext(), "Please modify at least one field", Toast.LENGTH_SHORT
+                ).show()
                 return@setOnClickListener
             }
 
-            if (::selectedAvatarUri.isInitialized) {
-                uploadAvatarToCloudinary(selectedAvatarUri, name, email)
-            } else {
-                updateUserProfile(name, email, null)
+            currentUser?.let { user ->
+                firestore.collection("users").document(user.uid).get()
+                    .addOnSuccessListener { document ->
+                        if (::selectedAvatarUri.isInitialized) {
+                            uploadAvatarToCloudinary(selectedAvatarUri,
+                                name.ifEmpty { document.getString("name") },
+                                email.ifEmpty { document.getString("email") })
+                        } else {
+                            updateUserProfile(
+                                name.ifEmpty { document.getString("name") },
+                                email.ifEmpty { document.getString("email") },
+                                null
+                            )
+                        }
+                    }
             }
-
             dialog.dismiss()
         }
 
         dialog.show()
     }
 
-    private fun uploadAvatarToCloudinary(uri: Uri, name: String, email: String) {
+    private fun uploadAvatarToCloudinary(uri: Uri, name: String?, email: String?) {
         MediaManager.get().upload(uri).options(
             ObjectUtils.asMap(
                 "folder", "user_avatars", "public_id", firebaseAuth.currentUser?.uid
@@ -219,7 +260,9 @@ class Profile : Fragment() {
             override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
             override fun onSuccess(requestId: String?, resultData: MutableMap<Any?, Any?>?) {
                 val avatarUrl = resultData?.get("url") as? String
-                updateUserProfile(name, email, avatarUrl)
+                updateUserProfile(
+                    name, email, avatarUrl
+                )
             }
 
             override fun onError(requestId: String?, error: ErrorInfo?) {
@@ -234,29 +277,96 @@ class Profile : Fragment() {
         }).dispatch()
     }
 
-    private fun updateUserProfile(name: String, email: String, avatarUrl: String?) {
+    private fun updateUserProfile(name: String?, email: String?, avatarUrl: String?) {
         val currentUser = firebaseAuth.currentUser
         if (currentUser != null) {
-            val userMap = hashMapOf(
-                "name" to name, "email" to email
-            )
-            avatarUrl?.let {
-                userMap["avatarUrl"] = it
-            }
+            // Fetch the current user details from Firestore
+            firestore.collection("users").document(currentUser.uid).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        val currentName = document.getString("name")
+                        val currentEmail = document.getString("email")
+                        val currentAvatarUrl = document.getString("avatarUrl")
 
-            firestore.collection("users").document(currentUser.uid).set(userMap)
-                .addOnSuccessListener {
-                    Toast.makeText(
-                        requireContext(), "Profile updated successfully", Toast.LENGTH_SHORT
-                    ).show()
-                    fetchUserDetails()
+                        // Prepare the updated fields
+                        val updatedUserMap = mutableMapOf<String, Any>()
+                        if (!name.isNullOrEmpty() && name != currentName) {
+                            updatedUserMap["name"] = name
+                        }
+                        if (!email.isNullOrEmpty() && email != currentEmail) {
+                            updatedUserMap["email"] = email
+                        }
+                        if (!avatarUrl.isNullOrEmpty() && avatarUrl != currentAvatarUrl) {
+                            updatedUserMap["avatarUrl"] = avatarUrl
+                        }
+
+                        // Update Firestore only if there are changes
+                        if (updatedUserMap.isNotEmpty()) {
+                            firestore.collection("users").document(currentUser.uid)
+                                .update(updatedUserMap).addOnSuccessListener {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Profile updated successfully",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    fetchUserDetails()
+                                }.addOnFailureListener { exception ->
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Failed to update profile: ${exception.message}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                        } else {
+                            Toast.makeText(
+                                requireContext(),
+                                "No changes detected in the profile",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            "User details not found in Firestore",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }.addOnFailureListener { exception ->
                     Toast.makeText(
                         requireContext(),
-                        "Failed to update profile: ${exception.message}",
+                        "Failed to fetch current profile: ${exception.message}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
         }
+    }
+
+    private fun updateDialogAvatar(uri: Bitmap?) {
+        currentDialogEditAvatar?.setImageBitmap(uri)
+    }
+
+    private fun getScaledBitmap(uri: Uri): Bitmap? {
+        val contentResolver = requireContext().contentResolver
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+
+        // Decode bounds only to get image dimensions
+        contentResolver.openInputStream(uri)?.use { inputStream ->
+            BitmapFactory.decodeStream(inputStream, null, options)
+        }
+
+        // Calculate the scaling factor
+        val maxWidth = 1024  // Max width you want to scale the image to
+        val maxHeight = 1024 // Max height you want to scale the image to
+        val scaleFactor = max(options.outWidth / maxWidth, options.outHeight / maxHeight)
+
+        // Decode the image with scaling applied
+        options.inJustDecodeBounds = false
+        options.inSampleSize = if (scaleFactor > 0) scaleFactor else 1
+
+        contentResolver.openInputStream(uri)?.use { inputStream ->
+            return BitmapFactory.decodeStream(inputStream, null, options)
+        } ?: throw IOException("Failed to open image URI")
     }
 }
