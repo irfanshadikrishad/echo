@@ -37,6 +37,7 @@ class Profile : Fragment() {
     private lateinit var profileEmail: TextView
     private lateinit var editButton: Button
     private lateinit var logoutButton: Button
+    private lateinit var myPostsTextView: TextView
 
     private lateinit var selectedAvatarUri: Uri
     private lateinit var pickImageLauncher: ActivityResultLauncher<String>
@@ -58,6 +59,7 @@ class Profile : Fragment() {
         profileEmail = view.findViewById(R.id.profile_email)
         editButton = view.findViewById(R.id.profile_edit)
         logoutButton = view.findViewById(R.id.profile_logout)
+        myPostsTextView = view.findViewById(R.id.profileMyPosts)
 
         // Initialize OkHttpClient and configure Picasso
         initializePicasso()
@@ -95,6 +97,18 @@ class Profile : Fragment() {
         // Handle update button
         editButton.setOnClickListener {
             showEditProfileDialog()
+        }
+
+        // Handle MyPosts redirect
+        myPostsTextView.setOnClickListener {
+            val currentUser = firebaseAuth.currentUser
+            Log.d("x869", "$currentUser")
+            if (currentUser !== null) {
+                val intent = Intent(myPostsTextView.context, MyPosts::class.java).putExtra(
+                    "userId", currentUser.uid
+                )
+                startActivity(intent)
+            }
         }
 
         return view

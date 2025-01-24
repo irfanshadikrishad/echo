@@ -39,4 +39,7 @@
     <string name="post_comment">Post Comment</string>
     <string name="post_content">Post Content</string>
     <string name="_0_comments">0 Comments</string>
+    <string name="_0_followers">0 followers</string>
+    <string name="_0_following">0 following</string>
+    <string name="my_posts">My Posts</string>
 </resources>
