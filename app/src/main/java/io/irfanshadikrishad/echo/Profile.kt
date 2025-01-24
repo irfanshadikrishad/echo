@@ -2,6 +2,8 @@ package io.irfanshadikrishad.echo
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -22,7 +24,9 @@ import com.jakewharton.picasso.OkHttp3Downloader
 import com.squareup.picasso.Picasso
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 class Profile : Fragment() {
     private lateinit var firebaseAuth: FirebaseAuth
@@ -37,6 +41,7 @@ class Profile : Fragment() {
     private lateinit var selectedAvatarUri: Uri
     private lateinit var pickImageLauncher: ActivityResultLauncher<String>
     private lateinit var picassoInstance: Picasso
+    private var currentDialogEditAvatar: ImageView? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -66,7 +71,10 @@ class Profile : Fragment() {
         pickImageLauncher =
             registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
                 if (uri != null) {
+                    val scaledBitmap = getScaledBitmap(uri)
                     selectedAvatarUri = uri
+                    // Handle updating the ImageView in the dialog dynamically
+                    updateDialogAvatar(scaledBitmap)
                 }
             }
 
@@ -176,22 +184,43 @@ class Profile : Fragment() {
         val changeAvatarButton = dialogView.findViewById<Button>(R.id.changeAvatarButton)
         val saveButton = dialogView.findViewById<Button>(R.id.saveButton)
 
+        currentDialogEditAvatar = editAvatar // Track the current ImageView for updates
+
         val dialog =
-            AlertDialog.Builder(requireContext()).setView(dialogView).setTitle("Edit profile:")
+            AlertDialog.Builder(requireContext()).setView(dialogView).setTitle("Edit profile")
                 .setCancelable(true).create()
 
-        changeAvatarButton.setOnClickListener {
-            pickImageLauncher.launch("image/*")
-            if (::selectedAvatarUri.isInitialized) {
-                picassoInstance.load(selectedAvatarUri).into(editAvatar)
+        // Pre-fill user data
+        val currentUser = firebaseAuth.currentUser
+        currentUser?.let {
+            firestore.collection("users").document(it.uid).get().addOnSuccessListener { document ->
+                if (document.exists()) {
+                    editName.setText(document.getString("name") ?: "")
+                    editEmail.setText(document.getString("email") ?: "")
+                    val avatarUrl = document.getString("avatarUrl")
+                    if (!avatarUrl.isNullOrEmpty()) {
+                        Picasso.get().load(avatarUrl).into(editAvatar)
+                    }
+                }
             }
         }
 
+        // Change avatar logic
+        changeAvatarButton.setOnClickListener {
+            try {
+                pickImageLauncher.launch("image/*")
+            } catch (err: Exception) {
+                Toast.makeText(
+                    requireContext(), "Error: ${err.localizedMessage}", Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        // Save button logic
         saveButton.setOnClickListener {
             val name = editName.text.toString().trim()
             val email = editEmail.text.toString().trim()
 
-            // Check if at least one field is being updated
             if (name.isEmpty() && email.isEmpty() && !::selectedAvatarUri.isInitialized) {
                 Toast.makeText(
                     requireContext(), "Please modify at least one field", Toast.LENGTH_SHORT
@@ -199,30 +228,25 @@ class Profile : Fragment() {
                 return@setOnClickListener
             }
 
-            // Proceed with the update
-            val currentUser = firebaseAuth.currentUser
-            if (currentUser !== null) {
-                firestore.collection("users").document(currentUser.uid).get()
-                    .addOnSuccessListener { user ->
+            currentUser?.let { user ->
+                firestore.collection("users").document(user.uid).get()
+                    .addOnSuccessListener { document ->
                         if (::selectedAvatarUri.isInitialized) {
-                            uploadAvatarToCloudinary(
-                                selectedAvatarUri,
-                                (name.ifEmpty { user.getString("name") }).toString(),
-                                (email.ifEmpty { user.getString("email") }).toString()
-                            )
+                            uploadAvatarToCloudinary(selectedAvatarUri,
+                                name.ifEmpty { document.getString("name") },
+                                email.ifEmpty { document.getString("email") })
                         } else {
                             updateUserProfile(
-                                name.ifEmpty { user.getString("name") },
-                                email.ifEmpty { user.getString("email") },
+                                name.ifEmpty { document.getString("name") },
+                                email.ifEmpty { document.getString("email") },
                                 null
                             )
                         }
-                    }.addOnFailureListener {
-                        Log.e("Profile", "Error fetching user information.")
                     }
             }
             dialog.dismiss()
         }
+
         dialog.show()
     }
 
@@ -315,5 +339,34 @@ class Profile : Fragment() {
                     ).show()
                 }
         }
+    }
+
+    private fun updateDialogAvatar(uri: Bitmap?) {
+        currentDialogEditAvatar?.setImageBitmap(uri)
+    }
+
+    private fun getScaledBitmap(uri: Uri): Bitmap? {
+        val contentResolver = requireContext().contentResolver
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+
+        // Decode bounds only to get image dimensions
+        contentResolver.openInputStream(uri)?.use { inputStream ->
+            BitmapFactory.decodeStream(inputStream, null, options)
+        }
+
+        // Calculate the scaling factor
+        val maxWidth = 1024  // Max width you want to scale the image to
+        val maxHeight = 1024 // Max height you want to scale the image to
+        val scaleFactor = max(options.outWidth / maxWidth, options.outHeight / maxHeight)
+
+        // Decode the image with scaling applied
+        options.inJustDecodeBounds = false
+        options.inSampleSize = if (scaleFactor > 0) scaleFactor else 1
+
+        contentResolver.openInputStream(uri)?.use { inputStream ->
+            return BitmapFactory.decodeStream(inputStream, null, options)
+        } ?: throw IOException("Failed to open image URI")
     }
 }

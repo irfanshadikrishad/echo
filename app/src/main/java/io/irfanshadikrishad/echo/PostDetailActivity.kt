@@ -108,13 +108,11 @@ class PostDetailActivity : AppCompatActivity() {
             return
         }
         db.collection("posts").document(postId!!).collection("comments")
-            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Toast.makeText(
-                        this,
-                        "Failed to load comments: ${error.message}",
-                        Toast.LENGTH_SHORT
+                        this, "Failed to load comments: ${error.message}", Toast.LENGTH_SHORT
                     ).show()
                     return@addSnapshotListener
                 }
