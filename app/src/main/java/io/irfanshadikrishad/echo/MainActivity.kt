@@ -66,27 +66,51 @@ class MainActivity : AppCompatActivity() {
                 // Update profile with display name
                 val profileUpdates = UserProfileChangeRequest.Builder().setDisplayName(name).build()
 
-                user?.updateProfile(profileUpdates)?.addOnCompleteListener {
-                    if (it.isSuccessful) {
-                        // Save additional details to Firestore
-                        val userDetails = hashMapOf(
-                            "uid" to user.uid, "name" to name, "email" to email, "phone" to phone
-                        )
+                user?.updateProfile(profileUpdates)?.addOnCompleteListener { profileTask ->
+                    if (profileTask.isSuccessful) {
+                        // Send verification email
+                        user.sendEmailVerification().addOnCompleteListener { emailTask ->
+                            if (emailTask.isSuccessful) {
+                                // Save additional details to Firestore
+                                val userDetails = hashMapOf(
+                                    "uid" to user.uid,
+                                    "name" to name,
+                                    "email" to email,
+                                    "phone" to phone
+                                )
 
-                        firestore.collection("users").document(user.uid).set(userDetails)
-                            .addOnSuccessListener {
-                                Toast.makeText(
-                                    this, "Registration Successful!", Toast.LENGTH_SHORT
-                                ).show()
+                                firestore.collection("users").document(user.uid).set(userDetails)
+                                    .addOnSuccessListener {
+                                        Toast.makeText(
+                                            this,
+                                            "Registration successful! Please verify your email.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
 
-                                // Navigate to login page
-                                val intent = Intent(this, LoginActivity::class.java)
-                                startActivity(intent)
-                            }.addOnFailureListener { e ->
+                                        // Navigate to login page
+                                        val intent = Intent(this, LoginActivity::class.java)
+                                        startActivity(intent)
+                                    }.addOnFailureListener { e ->
+                                        Toast.makeText(
+                                            this,
+                                            "Failed to save details: ${e.message}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                            } else {
                                 Toast.makeText(
-                                    this, "Failed to save details: ${e.message}", Toast.LENGTH_LONG
+                                    this,
+                                    "Failed to send verification email: ${emailTask.exception?.message}",
+                                    Toast.LENGTH_LONG
                                 ).show()
                             }
+                        }
+                    } else {
+                        Toast.makeText(
+                            this,
+                            "Failed to update profile: ${profileTask.exception?.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             } else {
@@ -97,7 +121,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
+    
     // Validation function
     private fun validateInput(
         name: String, email: String, phone: String, password: String, confirmPassword: String
