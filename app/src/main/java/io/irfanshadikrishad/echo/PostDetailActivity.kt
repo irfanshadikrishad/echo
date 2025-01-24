@@ -3,6 +3,7 @@ package io.irfanshadikrishad.echo
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -11,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import io.irfanshadikrishad.echo.databinding.ActivityPostDetailsBinding
+import java.util.Date
 
 class PostDetailActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPostDetailsBinding
@@ -56,6 +58,17 @@ class PostDetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "Comment cannot be empty", Toast.LENGTH_SHORT).show()
             }
         }
+        // Handle delete post
+        binding.pdDelete.setOnClickListener {
+            val firestore = FirebaseFirestore.getInstance()
+            firestore.collection("posts").document(postId!!).delete().addOnSuccessListener { _ ->
+                Toast.makeText(this, "Post deleted successfully!", Toast.LENGTH_SHORT).show()
+                finish()
+            }.addOnFailureListener {
+                Log.w("del196", "couldn't delete")
+                Toast.makeText(this, "Post could not be deleted!", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupRecyclerView() {
@@ -74,10 +87,14 @@ class PostDetailActivity : AppCompatActivity() {
                         append(post.likes.size)
                         append(" Likes")
                     }
+                    binding.pdTimestamp.text = Date(post.timestamp).toLocaleString()
                     db.collection("users").document(post.userId).get()
                         .addOnSuccessListener { user ->
                             // Set User Name
                             binding.postUsername.text = user.getString("name")
+                            if (post.userId == firebaseAuth.currentUser?.uid) {
+                                binding.pdDelete.visibility = View.VISIBLE
+                            }
                             // Set Users Avatar
                             Glide.with(binding.root.context).load(user.getString("avatarUrl"))
                                 .placeholder(R.drawable.default_avatar)

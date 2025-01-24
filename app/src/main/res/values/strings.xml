@@ -42,4 +42,6 @@
     <string name="_0_followers">0 followers</string>
     <string name="_0_following">0 following</string>
     <string name="my_posts">My Posts</string>
+    <string name="_23_jan_2024">23 Jan, 2024</string>
+    <string name="delete_post">Delete Post</string>
 </resources>
