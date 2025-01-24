@@ -57,8 +57,16 @@ class LoginActivity : AppCompatActivity() {
                 // Login successful
                 val user = firebaseAuth.currentUser
                 if (user != null) {
-                    // Fetch user details from Firestore
-                    fetchUserDetails(user.uid)
+                    if (user.isEmailVerified) {
+                        // Fetch user details from Firestore
+                        fetchUserDetails(user.uid)
+                    } else {
+                        // User is not verified
+                        Toast.makeText(
+                            this, "Please verify your email before logging in.", Toast.LENGTH_LONG
+                        ).show()
+                        firebaseAuth.signOut() // Log out the user
+                    }
                 }
             } else {
                 // Login failed
