@@ -188,28 +188,45 @@ class Profile : Fragment() {
         }
 
         saveButton.setOnClickListener {
-            val name = editName.text.toString()
-            val email = editEmail.text.toString()
+            val name = editName.text.toString().trim()
+            val email = editEmail.text.toString().trim()
 
-            if (name.isEmpty() || email.isEmpty()) {
-                Toast.makeText(requireContext(), "Please fill in all fields", Toast.LENGTH_SHORT)
-                    .show()
+            // Check if at least one field is being updated
+            if (name.isEmpty() && email.isEmpty() && !::selectedAvatarUri.isInitialized) {
+                Toast.makeText(
+                    requireContext(), "Please modify at least one field", Toast.LENGTH_SHORT
+                ).show()
                 return@setOnClickListener
             }
 
-            if (::selectedAvatarUri.isInitialized) {
-                uploadAvatarToCloudinary(selectedAvatarUri, name, email)
-            } else {
-                updateUserProfile(name, email, null)
+            // Proceed with the update
+            val currentUser = firebaseAuth.currentUser
+            if (currentUser !== null) {
+                firestore.collection("users").document(currentUser.uid).get()
+                    .addOnSuccessListener { user ->
+                        if (::selectedAvatarUri.isInitialized) {
+                            uploadAvatarToCloudinary(
+                                selectedAvatarUri,
+                                (name.ifEmpty { user.getString("name") }).toString(),
+                                (email.ifEmpty { user.getString("email") }).toString()
+                            )
+                        } else {
+                            updateUserProfile(
+                                name.ifEmpty { user.getString("name") },
+                                email.ifEmpty { user.getString("email") },
+                                null
+                            )
+                        }
+                    }.addOnFailureListener {
+                        Log.e("Profile", "Error fetching user information.")
+                    }
             }
-
             dialog.dismiss()
         }
-
         dialog.show()
     }
 
-    private fun uploadAvatarToCloudinary(uri: Uri, name: String, email: String) {
+    private fun uploadAvatarToCloudinary(uri: Uri, name: String?, email: String?) {
         MediaManager.get().upload(uri).options(
             ObjectUtils.asMap(
                 "folder", "user_avatars", "public_id", firebaseAuth.currentUser?.uid
@@ -219,7 +236,9 @@ class Profile : Fragment() {
             override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
             override fun onSuccess(requestId: String?, resultData: MutableMap<Any?, Any?>?) {
                 val avatarUrl = resultData?.get("url") as? String
-                updateUserProfile(name, email, avatarUrl)
+                updateUserProfile(
+                    name, email, avatarUrl
+                )
             }
 
             override fun onError(requestId: String?, error: ErrorInfo?) {
@@ -234,26 +253,64 @@ class Profile : Fragment() {
         }).dispatch()
     }
 
-    private fun updateUserProfile(name: String, email: String, avatarUrl: String?) {
+    private fun updateUserProfile(name: String?, email: String?, avatarUrl: String?) {
         val currentUser = firebaseAuth.currentUser
         if (currentUser != null) {
-            val userMap = hashMapOf(
-                "name" to name, "email" to email
-            )
-            avatarUrl?.let {
-                userMap["avatarUrl"] = it
-            }
+            // Fetch the current user details from Firestore
+            firestore.collection("users").document(currentUser.uid).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        val currentName = document.getString("name")
+                        val currentEmail = document.getString("email")
+                        val currentAvatarUrl = document.getString("avatarUrl")
 
-            firestore.collection("users").document(currentUser.uid).set(userMap)
-                .addOnSuccessListener {
-                    Toast.makeText(
-                        requireContext(), "Profile updated successfully", Toast.LENGTH_SHORT
-                    ).show()
-                    fetchUserDetails()
+                        // Prepare the updated fields
+                        val updatedUserMap = mutableMapOf<String, Any>()
+                        if (!name.isNullOrEmpty() && name != currentName) {
+                            updatedUserMap["name"] = name
+                        }
+                        if (!email.isNullOrEmpty() && email != currentEmail) {
+                            updatedUserMap["email"] = email
+                        }
+                        if (!avatarUrl.isNullOrEmpty() && avatarUrl != currentAvatarUrl) {
+                            updatedUserMap["avatarUrl"] = avatarUrl
+                        }
+
+                        // Update Firestore only if there are changes
+                        if (updatedUserMap.isNotEmpty()) {
+                            firestore.collection("users").document(currentUser.uid)
+                                .update(updatedUserMap).addOnSuccessListener {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Profile updated successfully",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    fetchUserDetails()
+                                }.addOnFailureListener { exception ->
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Failed to update profile: ${exception.message}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                        } else {
+                            Toast.makeText(
+                                requireContext(),
+                                "No changes detected in the profile",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            "User details not found in Firestore",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }.addOnFailureListener { exception ->
                     Toast.makeText(
                         requireContext(),
-                        "Failed to update profile: ${exception.message}",
+                        "Failed to fetch current profile: ${exception.message}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
