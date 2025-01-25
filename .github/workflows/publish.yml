@@ -25,6 +25,8 @@ jobs:
       - name: Decode and Add google-services.json
         run: |
           echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
+      - name: Set execute permissions for gradlew
+        run: chmod +x ./gradlew
 
       - name: Build APK
         run: ./gradlew assembleRelease --warning-mode none
