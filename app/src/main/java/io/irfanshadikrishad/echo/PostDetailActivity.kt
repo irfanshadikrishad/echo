@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -69,6 +71,7 @@ class PostDetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "Post could not be deleted!", Toast.LENGTH_SHORT).show()
             }
         }
+
     }
 
     private fun setupRecyclerView() {
@@ -94,6 +97,11 @@ class PostDetailActivity : AppCompatActivity() {
                             binding.postUsername.text = user.getString("name")
                             if (post.userId == firebaseAuth.currentUser?.uid) {
                                 binding.pdDelete.visibility = View.VISIBLE
+                                binding.pdEdit.visibility = View.VISIBLE
+                                // Open Dialog
+                                binding.pdEdit.setOnClickListener {
+                                    showEditDialog(post)
+                                }
                             }
                             // Set Users Avatar
                             Glide.with(binding.root.context).load(user.getString("avatarUrl"))
@@ -190,4 +198,53 @@ class PostDetailActivity : AppCompatActivity() {
             }
         }
     }
+
+    // Edit Dialogue
+    private fun showEditDialog(post: Post) {
+        val builder = android.app.AlertDialog.Builder(this)
+        val inflater = layoutInflater
+        val dialogView = inflater.inflate(R.layout.dialog_edit_post, null)
+        builder.setView(dialogView)
+        builder.setCancelable(false)
+
+        val editText = dialogView.findViewById<EditText>(R.id.editPostContent)
+        val cancelButton = dialogView.findViewById<Button>(R.id.cancelEditButton)
+        val saveButton = dialogView.findViewById<Button>(R.id.saveEditButton)
+
+        // Set current post content in the edit text
+        editText.setText(post.content)
+
+        val dialog = builder.create()
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        try {
+            saveButton.setOnClickListener {
+                val updatedContent = editText.text.toString().trim()
+                if (updatedContent.isNotEmpty()) {
+                    updatePost(post, updatedContent)
+                    dialog.dismiss()
+                } else {
+                    Toast.makeText(this, "Content cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (error: Exception) {
+            Toast.makeText(this, "Error updating: $error", Toast.LENGTH_SHORT).show()
+        }
+        dialog.show()
+    }
+
+    // Update Post functionality
+    private fun updatePost(post: Post, updatedContent: String) {
+        val postRef = db.collection("posts").document(post.id)
+        postRef.update("content", updatedContent).addOnSuccessListener {
+            Toast.makeText(this, "Post updated successfully!", Toast.LENGTH_SHORT).show()
+            binding.contentTextView.text = updatedContent
+        }.addOnFailureListener {
+            Toast.makeText(this, "Failed to update post", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 }

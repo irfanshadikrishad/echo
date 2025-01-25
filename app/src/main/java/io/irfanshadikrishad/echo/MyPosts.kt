@@ -3,6 +3,7 @@ package io.irfanshadikrishad.echo
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -28,24 +29,16 @@ class MyPosts : AppCompatActivity() {
 
         // Initialize RecyclerView
         firestore = FirebaseFirestore.getInstance()
-        myPostsView = binding.myPostsView // Ensure this is assigned first
-        myPostsView.layoutManager = LinearLayoutManager(this) // Set the layout manager
+        myPostsView = binding.myPostsView
+        myPostsView.layoutManager = LinearLayoutManager(this)
         adapter = PostAdapter(posts, firestore)
         myPostsView.adapter = adapter
 
         // Get the userId from intent
         userId = intent.getStringExtra("userId")
         if (!userId.isNullOrEmpty()) {
-            myPostsText = binding.posts
-            myPostsText.text = buildString {
-                append(myPostsText.text)
-                append(" (")
-                append(userId)
-                append(")")
-            }
-
-            // Fetch and display posts from Firestore
             try {
+                // Fetch and display posts from Firestore
                 firestore.collection("posts")
                     .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
                     .get().addOnSuccessListener { documents ->
@@ -58,6 +51,14 @@ class MyPosts : AppCompatActivity() {
                             }
                         }
                         adapter.notifyDataSetChanged()
+                        // If no posts, show the message
+                        if (posts.isEmpty()) {
+                            binding.noPosts.visibility = View.VISIBLE
+                            binding.myPostsView.visibility = View.GONE
+                        } else {
+                            binding.noPosts.visibility = View.GONE
+                            binding.myPostsView.visibility = View.VISIBLE
+                        }
                     }
             } catch (error: Exception) {
                 Log.e("my_posts", "$error")
