@@ -103,6 +103,15 @@
         android:text="@string/delete_post"
         android:visibility="gone" />
 
+    <Button
+        android:id="@+id/pd_edit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:backgroundTint="@android:color/holo_green_light"
+        android:text="@string/edit_post"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/commentsRecyclerView"
         android:layout_width="match_parent"

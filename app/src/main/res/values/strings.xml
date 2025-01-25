@@ -44,4 +44,8 @@
     <string name="my_posts">My Posts</string>
     <string name="_23_jan_2024">23 Jan, 2024</string>
     <string name="delete_post">Delete Post</string>
+    <string name="edit_post">Edit Post</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_posts_available">No posts available</string>
 </resources>
