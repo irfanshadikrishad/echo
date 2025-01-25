@@ -1,4 +1,4 @@
-name: Build APK with Versioning
+name: Build APK with Google Services
 
 on:
   push:
@@ -11,7 +11,6 @@ on:
 
 jobs:
   build:
-    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
@@ -32,28 +31,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Add google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
+
       - name: Make Gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Extract version from release
-        if: ${{ github.event_name == 'release' }}
-        run: echo "VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-
-      - name: Set default version
-        if: ${{ github.event_name != 'release' }}
-        run: echo "VERSION=development-${{ github.run_number }}" >> $GITHUB_ENV
-
-      - name: Build the APK
+      - name: Build APK
         run: ./gradlew assembleRelease
-
-      - name: Rename APK with version
-        run: |
-          VERSION=${{ env.VERSION }}
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk")
-          mv "$APK_PATH" "app/build/outputs/apk/release/app-$VERSION.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
-          name: release-apk-${{ env.VERSION }}
-          path: app/build/outputs/apk/release/app-${{ env.VERSION }}.apk
+          name: release-apk
+          path: app/build/outputs/apk/release/*.apk
