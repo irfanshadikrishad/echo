@@ -39,7 +39,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --warning-mode none
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
